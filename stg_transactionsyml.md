@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: "Add audit columns"
+    columns:
+      - name: txn_id
+        description: "Transactions ID. May have duplicates"
+        tests:
+          - not_null
+
+      - name: amount
+        description: "Amount in RM"
+        tests:
+          - not_null
+
+      - name: _record_status
+        description: "CLEAN / CORRUPT"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['CLEAN', 'CORRUPT']
+
+      - name: _ingest_at
+        description: "Data timestamp ingested into warehouse."
+
+      - name: _source_file
+        description: "Nama fail asal dari Cloud Storage/S3."
