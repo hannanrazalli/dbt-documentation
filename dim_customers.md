@@ -13,7 +13,6 @@ with source_data as (
         _processed_at as valid_from
     from {{ ref('int_transactions_refined') }}
     {% if is_incremental() %}
-      -- Watermark logic untuk jimat kos BigQuery
       where _processed_at > (select max(valid_from) from {{ this }})
     {% endif %}
 ),
@@ -37,18 +36,15 @@ final_staged as (
         valid_from,
         cast(null as timestamp) as valid_to,
         true as is_current,
-        -- Panggil macro dengan string 'gold'
         {{ audit_columns('gold') }}
     from deduplicated
 )
 
--- FINAL OUTPUT
 select * from final_staged
 
 {% if is_incremental() %}
 union all
 
--- PRO LOGIC: "Expire-kan" record lama kalau ada perubahan hash_key
 select
     t.hash_key,
     t.cust_id,
@@ -56,7 +52,6 @@ select
     t.valid_from,
     s.valid_from as valid_to, 
     false as is_current,
-    -- Pastikan panggil macro yang sama untuk struktur column yang sama
     {{ audit_columns('gold') }}
 from {{ this }} t
 inner join final_staged s 
