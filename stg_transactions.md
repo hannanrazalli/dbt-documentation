@@ -4,7 +4,8 @@
 ) }}
 
 WITH raw_data AS (
-    SELECT * FROM {{ source('transactions_source', 'transactions_batch_1') }}
+    SELECT *
+    FROM {{ source('transactions_source', 'transactions_batch_1') }}
 )
 
 SELECT
@@ -15,7 +16,6 @@ SELECT
     is_member,
     status,
     txn_date,
-    {{ audit_columns('bronze') }},
     CASE
         WHEN txn_id IS NULL OR txn_id = '' THEN 'CORRUPT'
         WHEN cust_id IS NULL OR cust_id < 0 THEN 'CORRUPT'
@@ -25,9 +25,13 @@ SELECT
         WHEN status IS NULL OR status = '' THEN 'CORRUPT'
         WHEN txn_date IS NULL THEN 'CORRUPT'
         ELSE 'CLEAN'
-    END AS _record_status
+    END AS _record_status,
+    {{ audit_columns('bronze') }}
 FROM raw_data
 
 {% if is_incremental() %}
-  WHERE _ingest_at > (SELECT max(_ingest_at) FROM {{ this }}) - INTERVAL 1 HOUR
+  WHERE _ingest_at > (
+    SELECT timestamp_sub(max(_ingest_at), INTERVAL 1 HOUR)
+    FROM {{ this }}
+  )
 {% endif %}
