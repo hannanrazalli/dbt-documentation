@@ -1,5 +1,5 @@
 {{ config(
-    unique_key='hash_key',
+    unique_key='txn_id',
     incremental_strategy='merge'
 ) }}
 
