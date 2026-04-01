@@ -1,24 +1,25 @@
 {{ config(
-    materialized='incremental',
-    unique_key='txn_id',
+    unique_key='hash_key',
     incremental_strategy='merge'
 ) }}
 
 WITH source_data AS (
-    SELECT * FROM {{ ref('stg_transactions') }}
+    SELECT *
+    FROM {{ ref('stg_transactions') }}
     {% if is_incremental() %}
-      WHERE _ingest_at > (
-          SELECT TIMESTAMP_SUB(MAX(_ingest_at), INTERVAL 1 HOUR) 
-          FROM {{ this }}
-      )
+        WHERE _ingest_at > (
+            SELECT timestamp_sub(max(_ingest_at), INTERVAL 1 HOUR)
+            FROM {{ this }}
+        )
     {% endif %}
 ),
 
 deduplicate AS (
-    SELECT * FROM source_data
-    QUALIFY ROW_NUMBER() OVER(
-        PARTITION BY txn_id
-        ORDER BY _ingest_at DESC
+    SELECT *
+    FROM source_data
+    qualify row_number() over(
+        partition by txn_id
+        order by _ingest_at desc
     ) = 1
 ),
 
@@ -30,14 +31,14 @@ transformed AS (
         points,
         is_member,
         CASE
-            WHEN UPPER(TRIM(status)) IN ('COMPLETED', 'CANCELLED', 'PENDING') THEN UPPER(TRIM(status))
+            WHEN upper(trim(status)) IN ('COMPLETED', 'PENDING', 'CANCELLED') THEN upper(trim(status))
             ELSE 'UNKNOWN'
         END AS status,
-        (upper(trim(status)) = 'CANCELLED') as is_deleted,
         txn_date,
-        _ingest_at,
-        _batch_id_bronze, 
         _record_status,
+        _ingest_at,
+        _batch_id_bronze,
+        (upper(trim(status)) = 'CANCELLED') AS _is_deleted,
         {{ audit_columns('silver') }}
     FROM deduplicate
 )
