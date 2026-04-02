@@ -1,5 +1,6 @@
-{%- set source_model = ref('int_transactions_refined') -%}
-{%- set dim_cols = ['cust_id', 'is_member'] -%}
+{%- set model_cfg = var('dim_tables')['dim_customers'] -%}
+{%- set source_model = ref(model_cfg['source']) -%}
+{%- set dim_cols = model_cfg['columns'] -%}
 {%- set pk = dim_cols[0] -%}
 
 {{ config(
