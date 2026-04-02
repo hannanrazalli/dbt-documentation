@@ -1,9 +1,6 @@
-{#-- PHASE 3: DIM ENGINE (dbt version) --#}
 {%- set source_model = ref('int_transactions_refined') -%}
-
-{#-- Sini kau letak column yang kau nak sahaja (macam config dlm PySpark) --#}
 {%- set dim_cols = ['cust_id', 'is_member'] -%}
-{%- set pk = dim_cols[0] -%} {#-- Ambil cust_id sebagai PK --#}
+{%- set pk = dim_cols[0] -%}
 
 {{ config(
     materialized='incremental',
@@ -14,14 +11,12 @@
 
 with source_data as (
     select
-        -- Hanya loop column yang kita dah define dalam dim_cols
         {% for col in dim_cols -%}
             {{ col }}{% if not loop.last %}, {% endif %}
         {%- endfor %},
         _processed_at as valid_from
     from {{ source_model }}
     {% if is_incremental() %}
-      -- Watermark: Jimat kos BQ
       where _processed_at > (select max(valid_from) from {{ this }})
     {% endif %}
 ),
@@ -37,7 +32,6 @@ deduplicated as (
 
 final_staged as (
     select
-        -- Generate hash_key guna list dim_cols sahaja
         {{ dbt_utils.generate_surrogate_key(dim_cols) }} as hash_key,
         
         {% for col in dim_cols -%}
@@ -56,7 +50,6 @@ select * from final_staged
 {% if is_incremental() %}
 union all
 
--- PRO LOGIC: Expire-kan record lama
 select
     t.hash_key,
     {% for col in dim_cols -%}
