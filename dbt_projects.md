@@ -13,7 +13,7 @@ models:
     staging:
       +schema: bronze
       +materialized: incremental
-
+    
     intermediate:
       +schema: silver
       +materialized: incremental
@@ -21,3 +21,9 @@ models:
     marts:
       +schema: gold
       +materialized: incremental
+
+vars:
+  dim_tables:
+    dim_customers:
+      source: "int_transactions_refined"
+      columns: ["cust_id", "is_member"]
